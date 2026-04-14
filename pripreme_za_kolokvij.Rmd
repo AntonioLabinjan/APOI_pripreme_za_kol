@@ -1,0 +1,117 @@
+---
+title: "Vjezba"
+output: html_document
+date: "2026-04-14"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+dijamanti <- read.csv('Diamonds.csv')
+str(dijamanti)
+```
+```{r}
+dijamanti$Color <- as.factor(dijamanti$Color)
+dijamanti$Clarity <- as.factor(dijamanti$Clarity)
+
+unique(dijamanti$Cut)
+```
+```{r}
+# makni duplikate ako postoje
+dijamanti <- dijamanti[!duplicated(dijamanti), ]
+
+# makni redove s NA vrijednostima
+dijamanti <- na.omit(dijamanti)
+
+# provjera outliera (npr. cijena i karati)
+boxplot(dijamanti$Price, main = "Outlieri - Price")
+boxplot(dijamanti$Carat.Size, main = "Outlieri - Carat")
+
+# opcionalno: filtriranje ekstremnih outliera (npr. 1% i 99%)
+q_low <- quantile(dijamanti$Price, 0.01)
+q_high <- quantile(dijamanti$Price, 0.99)
+
+dijamanti <- dijamanti[dijamanti$Price >= q_low & dijamanti$Price <= q_high, ]
+```
+
+```{r}
+# uzimamo samo numeričke varijable
+numeric_data <- dijamanti[, sapply(dijamanti, is.numeric)]
+
+# korelacijska matrica
+cor_matrix <- cor(numeric_data)
+cor_matrix
+
+# vizualizacija
+library(corrplot)
+corrplot(cor_matrix, method = "circle")
+```
+
+```{r}
+dijamanti$Cut <- factor(dijamanti$Cut, levels = c("Good", "Very Good", "Excellent", "Ideal"), ordered = TRUE)
+```
+```{r}
+summary(is.na(dijamanti))
+```
+```{r}
+library(psych)
+describe(dijamanti)
+```
+```{r}
+describe(dijamanti[, c(2,5,6,9)]) # uzimamo samo kvantitativne varijable da bismo računali numeričke statističke stvari (određeni stupci)
+```
+Promatranih 2690 dijamanata imali su prosječnu veličinu od 0.87 karata. Veličina je standardno odstupala od prosječne velčine za 0.32 karata. itd.
+Distribucija je blago pozitivna asimetrična
+- Promatramo dijamante
+- Projsečna dubina iznosi 61.71 nečega uz standardnu decijaciju od 1.21
+- standardno odstupa od prosječne dubine za 1.21 nečega
+- polovica dijamanata ima dubinu 61.9 (pola od min do medijana, pola od medijana do max)
+- 
+```{r}
+hist(dijamanti$Carat.Size) # vidimo distribuciju
+hist(dijamanti$Carat.Size, main = "Veličine dijamanta", xlab = "Karat", ylab = "Frekvencije")
+
+hist(dijamanti$Depth) # vidimo distribuciju
+```
+
+
+```{r}
+# Boxplot
+# cijena po cutu
+boxplot(dijamanti$Price ~dijamanti$Cut)
+# cijena po caratu
+boxplot(dijamanti$Price ~dijamanti$Carat)
+# cijena po boji
+boxplot(dijamanti$Price ~dijamanti$Color)
+# cijena po čistoči
+boxplot(dijamanti$Price ~dijamanti$Clarity)
+
+# koliko skupina uspoređujemo?
+# koliko opcija postoji unutar skupina?
+# koje testiranje => tablica 50: https://rpubs.com/kakoste/hipoteze
+```
+```{r}
+model <- lm(dijamanti$Price ~dijamanti$Clarity, data = dijamanti)
+shapiro.test(model$residuals)
+```
+
+$H_0$ : distribucije cijena dijamanta se ne razlikuju s obzirom na jasnoću
+$H_1$ : Distribucije cijena dijamanta se razlikuju s obzirom na jasnoću
+
+```{r}
+kruskal.test(dijamanti$Price, dijamanti$Clarity)
+```
+```{r}
+library(rstatix)
+kruskal_effsize(dijamanti$Price ~ dijamanti$Clarity) # magnitude parametar govori koliko je značajan taj parametar i koliko ga se da opazit; koliko je stvarno relevantan
+```
+
+```{r}
+DescTools::DunnTest(dijamanti$Price, dijamanti$Clarity)
+```
+
+
+# još korelacija i regresija i to je manje-više sav kolokvij
+# i pogledat cleaning podataka i te sheme
