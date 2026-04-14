@@ -1,0 +1,301 @@
+---
+title: "Vjezba"
+output: html_document
+date: "2026-04-14"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+# Prvo instaliraj paket ako ga nemaš
+install.packages("ggplot2")
+
+# Učitaj paket
+library(ggplot2)
+
+# Pozovi podatke
+data("diamonds")
+
+# Pogledaj prvih nekoliko redova
+head(diamonds)
+```
+
+```{r}
+dijamanti <- diamonds
+str(dijamanti)
+```
+```{r}
+dijamanti$color <- as.factor(dijamanti$color)
+dijamanti$clarity <- as.factor(dijamanti$clarity)
+
+unique(dijamanti$cut)
+```
+```{r}
+# makni duplikate ako postoje
+dijamanti <- dijamanti[!duplicated(dijamanti), ]
+
+# makni redove s NA vrijednostima
+dijamanti <- na.omit(dijamanti)
+
+# provjera outliera (npr. cijena i karati)
+boxplot(dijamanti$price, main = "Outlieri - Price")
+boxplot(dijamanti$carat, main = "Outlieri - Carat")
+
+# opcionalno: filtriranje ekstremnih outliera (npr. 1% i 99%)
+q_low <- quantile(dijamanti$price, 0.01)
+q_high <- quantile(dijamanti$price, 0.99)
+
+dijamanti <- dijamanti[dijamanti$price >= q_low & dijamanti$price <= q_high, ]
+```
+
+```{r}
+# uzimamo samo numeričke varijable
+numeric_data <- dijamanti[, sapply(dijamanti, is.numeric)]
+
+# korelacijska matrica
+cor_matrix <- cor(numeric_data)
+cor_matrix
+
+# vizualizacija
+library(corrplot)
+corrplot(cor_matrix, method = "circle")
+```
+
+```{r}
+dijamanti$cut <- factor(dijamanti$cut, levels = c("Good", "Very Good", "Excellent", "Ideal"), ordered = TRUE)
+```
+```{r}
+summary(is.na(dijamanti))
+```
+```{r}
+library(psych)
+describe(dijamanti)
+```
+```{r}
+describe(dijamanti[, c(2,5,6,9)]) # uzimamo samo kvantitativne varijable da bismo računali numeričke statističke stvari (određeni stupci)
+```
+Promatranih 2690 dijamanata imali su prosječnu veličinu od 0.87 karata. Veličina je standardno odstupala od prosječne velčine za 0.32 karata. itd.
+Distribucija je blago pozitivna asimetrična
+- Promatramo dijamante
+- Projsečna dubina iznosi 61.71 nečega uz standardnu decijaciju od 1.21
+- standardno odstupa od prosječne dubine za 1.21 nečega
+- polovica dijamanata ima dubinu 61.9 (pola od min do medijana, pola od medijana do max)
+- 
+```{r}
+# 1. Osnovni histogram za brzi pregled distribucije
+hist(dijamanti$carat)
+
+# 2. Prilagođeni histogram s naslovima i oznakama
+hist(dijamanti$carat, 
+     main = "Distribucija veličine dijamanata", 
+     xlab = "Masa u karatima", 
+     ylab = "Broj dijamanata (Frekvencija)",
+     col = "skyblue",      # Dodao sam boju radi preglednosti
+     border = "white")     # Bijeli rubovi stupaca za čišći izgled
+hist(dijamanti$depth) # vidimo distribuciju
+```
+
+
+```{r}
+# Boxplot
+# cijena po cutu
+boxplot(dijamanti$price ~dijamanti$cut)
+# cijena po caratu
+boxplot(dijamanti$price ~dijamanti$carat)
+# cijena po boji
+boxplot(dijamanti$price ~dijamanti$color)
+# cijena po čistoči
+boxplot(dijamanti$price ~dijamanti$clarity)
+
+# koliko skupina uspoređujemo?
+# koliko opcija postoji unutar skupina?
+# koje testiranje => tablica 50: https://rpubs.com/kakoste/hipoteze
+```
+```{r}
+model <- lm(dijamanti$price ~dijamanti$clarity, data = dijamanti)
+shapiro.test(model$residuals)
+```
+
+$H_0$ : distribucije cijena dijamanta se ne razlikuju s obzirom na jasnoću
+$H_1$ : Distribucije cijena dijamanta se razlikuju s obzirom na jasnoću
+
+```{r}
+kruskal.test(dijamanti$price, dijamanti$clarity)
+```
+```{r}
+library(rstatix)
+kruskal_effsize(dijamanti$price ~ dijamanti$clarity) # magnitude parametar govori koliko je značajan taj parametar i koliko ga se da opazit; koliko je stvarno relevantan
+```
+
+```{r}
+DescTools::DunnTest(dijamanti$price, dijamanti$clarity)
+```
+```{r}
+# Vizualizacija povezanosti pomoću Scatterplota
+plot(dijamanti$carat.size, dijamanti$price, 
+     main = "Odnos veličine (karat) i cijene",
+     xlab = "Karat", ylab = "Cijena",
+     pch = 19, col = "steelblue")
+
+# Izračun korelacije
+```
+
+
+```{r}
+korelacija <- cor.test(dijamanti$Carat.Size, dijamanti$Price)
+korelacija
+```
+```{r}
+# Izrada linearnog modela
+# Price = b0 + b1 * Carat.Size
+reg_model <- lm(price ~ size, data = dijamanti)
+
+# Prikaz rezultata modela
+summary(reg_model)
+```
+
+
+# još korelacija i regresija i to je manje-više sav kolokvij
+# i pogledat cleaning podataka i te sheme
+```{r}
+# --- PRIPREMA I ČIŠĆENJE ---
+library(ggplot2)
+library(psych)
+library(corrplot)
+library(rstatix)
+library(DescTools)
+
+# Učitavanje
+data("diamonds")
+dijamanti <- diamonds
+
+# Pretvaranje u faktore s ispravnim nivoima (da ne dobiješ NA vrijednosti)
+dijamanti$color <- as.factor(dijamanti$color)
+dijamanti$clarity <- as.factor(dijamanti$clarity)
+dijamanti$cut <- factor(dijamanti$cut, 
+                        levels = c("Fair", "Good", "Very Good", "Premium", "Ideal"), 
+                        ordered = TRUE)
+
+# Čišćenje: duplikati i NA
+dijamanti <- dijamanti[!duplicated(dijamanti), ]
+dijamanti <- na.omit(dijamanti)
+
+print(dijamanti)
+# Filtriranje outliera (izbacujemo top 1% najskupljih radi stabilnosti modela)
+q_high <- quantile(dijamanti$price, 0.99)
+dijamanti <- dijamanti[dijamanti$price <= q_high, ]
+
+# --- DESKRIPTIVNA STATISTIKA ---
+# Opći pregled
+describe(dijamanti[, c("carat", "depth", "table", "price")])
+
+# Histogrami
+par(mfrow=c(1,2)) # Prikaz dva grafa jedan pored drugog
+hist(dijamanti$carat, main="Distribucija Karata", xlab="Karat", col="skyblue", border="white")
+hist(dijamanti$depth, main="Distribucija Dubine", xlab="Depth", col="salmon", border="white")
+par(mfrow=c(1,1)) # Vrati na jedan graf
+
+# --- KORELACIJA ---
+numeric_data <- dijamanti[, sapply(dijamanti, is.numeric)]
+cor_matrix <- cor(numeric_data)
+corrplot(cor_matrix, method = "circle")
+
+# --- TESTIRANJE HIPOTEZA (ANOVA / Kruskal-Wallis) ---
+# Provjera normalnosti reziduala (uzimamo uzorak jer shapiro ne prima > 5000)
+model_anova <- lm(price ~ clarity, data = dijamanti)
+shapiro.test(residuals(model_anova)[1:5000]) 
+
+# Budući da su podaci o dijamantima rijetko normalni, koristimo Kruskal-Wallis
+kruskal_test <- kruskal.test(price ~ clarity, data = dijamanti)
+print(kruskal_test)
+
+# Veličina efekta i Post-hoc ako je test značajan
+kruskal_effsize(price ~ clarity, data = dijamanti)
+DunnTest(dijamanti$price, dijamanti$clarity)
+
+# --- REGRESIJA I SCATTERPLOT ---
+# Scatterplot (ispravljen stupac na 'carat')
+plot(dijamanti$carat, dijamanti$price, 
+     main = "Odnos karata i cijene",
+     xlab = "Karat", ylab = "Cijena",
+     pch = 19, col = rgb(0.2, 0.4, 0.6, 0.2)) # dodana prozirnost zbog puno točaka
+
+# Linearna regresija
+reg_model <- lm(price ~ carat, data = dijamanti)
+summary(reg_model)
+
+# Dodavanje regresijske linije na graf
+abline(reg_model, col = "red", lwd = 2)
+
+
+# --- 1. PROVJERA PRETPOSTAVKI LINEARNE REGRESIJE ---
+# Ovo je obavezno na kolokviju nakon summary(reg_model)
+
+# Grafička provjera pretpostavki (4 ključna grafa)
+par(mfrow=c(2,2)) 
+plot(reg_model)
+par(mfrow=c(1,1))
+
+# Tumačenje grafova:
+# 1. Residuals vs Fitted: tražimo ravnu crvenu liniju (linearnost)
+# 2. Normal Q-Q: točke moraju biti na dijagonali (normalnost reziduala)
+# 3. Scale-Location: tražimo vodoravnu liniju (homoskedastičnost - konstantna varijanca)
+
+# --- 2. VIŠESTRUKA REGRESIJA (Multiple Regression) ---
+# Rijetko se traži samo jedna varijabla. Evo kako uključiti više njih:
+reg_model_multi <- lm(price ~ carat + cut + color, data = dijamanti)
+summary(reg_model_multi)
+
+# --- 3. TESTIRANJE RAZLIKE IZMEĐU DVA MODELA (ANOVA modela) ---
+# Da vidimo je li složeniji model statistički bolji
+anova(reg_model, reg_model_multi)
+
+# --- 4. PREDIKCIJA ---
+# Koliko bi koštao dijamant od 1.2 karata prema našem modelu?
+novo_stanje <- data.frame(carat = 1.2)
+predict(reg_model, novo_stanje)
+
+# --- 5. LOGARITAMSKA TRANSFORMACIJA ---
+# Cijena i karati često imaju eksponencijalan odnos. 
+# Log-Log model često daje bolji R-squared:
+reg_model_log <- lm(log(price) ~ log(carat), data = dijamanti)
+summary(reg_model_log)
+```
+
+
+
+
+---
+
+### 1. Deskriptivna analiza i čišćenje
+Nakon micanja duplikata i filtriranja 1% ekstremno skupih dijamanata, dobili smo stabilniji skup podataka. Deskriptivna statistika pokazuje da je prosječna masa dijamanta (carat) oko **0.8 karata**, ali uz značajnu desnu asimetriju (većina je manjih, dok rijetki veliki vuku prosjek prema gore). Varijabla `price` također pokazuje asimetriju, što sugerira da bi logaritamska transformacija mogla poboljšati model.
+
+### 2. Korelacija
+Korelacijska matrica i `corrplot` pokazuju izrazito snažnu pozitivnu korelaciju između **mase (carat)** i **cijene (price)** ($r > 0.90$). Također, vidljiva je savršena korelacija između mase i dimenzija ($x, y, z$), što je logično jer veći volumen znači i veću masu.
+
+### 3. Testiranje razlika (Kruskal-Wallis)
+Budući da `shapiro.test` ima $p < 0.05$, odbacujemo hipotezu o normalnosti reziduala, pa je **Kruskal-Wallis** test primjereniji od ANOVA-e.
+* **Rezultat:** Kruskal-Wallis test je značajan ($p < 0.05$), što znači da **postoji statistički značajna razlika** u cijeni s obzirom na jasnoću (`clarity`).
+* **Post-hoc:** Dunn test nam točno pokazuje koji se parovi razina jasnoće razlikuju. Veličina efekta (`effsize`) nam govori koliko je ta razlika praktično bitna.
+
+### 4. Regresijska analiza
+U jednostavnom linearnom modelu (`price ~ carat`):
+* **$R^2$ (Koeficijent determinacije):** npr. ako je $0.85$, kažemo da "85% varijacije u cijeni možemo objasniti masom dijamanta".
+* **Koeficijent (carat):** Za svaki dodatni karat mase, cijena dijamanta u prosjeku raste za **X** dolara.
+
+U višestrukoj regresiji (`price ~ carat + cut + color`), primjećujemo da dodavanje kvalitete reza i boje **povećava $R^2$**, što znači da ti faktori dodatno pojašnjavaju cijenu. Test `anova(model1, model2)` potvrđuje da je složeniji model statistički značajno bolji.
+
+### 5. Provjera pretpostavki (Dijagnostika)
+* **Residuals vs Fitted:** Ako linija značajno odstupa od horizontale, naš model ne hvata linearni odnos savršeno (što je ovdje slučaj, jer cijena raste brže nego masa).
+* **Q-Q Plot:** Točke na krajevima odstupaju od pravca, što potvrđuje da reziduali nisu normalno distribuirani (heavy tails).
+* **Log-Log model:** Zbog gore navedenog, model `log(price) ~ log(carat)` se pokazao superiornim jer linearizira odnos i smanjuje probleme s heteroskedastičnošću.
+
+---
+
+### Što još moraš znati za "A" na kolokviju?
+
+1.  **P-vrijednost ($p$):** Ako je $p < 0.05$, "odbacujemo nultu hipotezu" (postoji značajan utjecaj/razlika).
+2.  **Multikolinearnost:** Na kolokviju bi te mogli pitati zašto ne stavljamo $x, y, z$ i $carat$ zajedno u model? Odgovor: Jer su previše povezani (korelirani) pa bi to pokvarilo model.
+3.  **Predikcija:** Ako dobiješ zadatak "predvidi cijenu", koristiš `predict()` funkciju kao u kodu iznad.
+
