@@ -1,0 +1,93 @@
+---
+title: "Salabahter - kolokvij"
+output: html_document
+date: "2026-04-15"
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+# Učitavanje svih potrebnih paketa na početku
+library(ggplot2)
+library(psych)
+library(corrplot)
+library(DescTools)
+library(rstatix)
+```
+```{r}
+# Učitavanje (npr. diamonds set)
+data("diamonds")
+df <- diamonds
+
+# --- ČIŠĆENJE ---
+# Tekstualne stupce (npr. color, clarity) obavezno u factor!
+df$color <- as.factor(df$color)
+df$clarity <- as.factor(df$clarity)
+
+# Micanje duplikata i praznih polja (NA)
+df <- df[!duplicated(df), ]
+df <- na.omit(df)
+
+# --- OUTLIERI (Ekstremne vrijednosti) ---
+# Filtriramo npr. gornjih 1% najskupljih da model bude stabilniji
+q_high <- quantile(df$price, 0.99)
+df_clean <- df[df$price <= q_high, ]
+```
+Interpretacija: "Podatke sam očistio od duplikata i NA vrijednosti. Micanjem ekstremnih outliera (gornjih 1%) osigurao sam da model bolje reprezentira većinu podataka i da rezultati ne budu iskrivljeni."
+```{r}
+# Opći pregled: Mean, SD, Skewness
+describe(df_clean[, c("carat", "depth", "price")])
+
+# Histogrami za distribuciju
+hist(df_clean$price, col="skyblue", main="Distribucija cijene", xlab="Cijena")
+
+# Boxplot za razlike među grupama
+boxplot(price ~ cut, data=df_clean, main="Cijena po kvaliteti reza", col="orange")
+```
+Interpretacija: 
+* Mean: "Prosječna vrijednost iznosi X, što nam pokazuje tipičan iznos u uzorku."
+
+Skew (Asimetrija): "Vrijednost > 0 znači da imamo puno malih vrijednosti i par jako velikih koji vuku prosjek udesno."
+
+```{r}
+# Glavni test
+kruskal_rez <- kruskal.test(price ~ color, data = df_clean)
+print(kruskal_rez)
+
+# Post-hoc (samo ako je p < 0.05) - tko se točno razlikuje?
+DunnTest(df_clean$price, df_clean$color)
+
+# Veličina efekta
+kruskal_effsize(price ~ color, data = df_clean)
+```
+p-value: "Budući da je p < 0.05, odbacujemo nultu hipotezu. Postoji statistički značajna razlika u cijeni s obzirom na boju."
+
+Effsize: "Veličina efekta nam govori koliko je ta razlika praktično bitna u stvarnom svijetu."
+
+```{r}
+# Korelacija (Pearson)
+cor.test(df_clean$carat, df_clean$price)
+
+# Linearna regresija
+model <- lm(price ~ carat, data = df_clean)
+summary(model)
+```
+Adjusted R-squared: "Model objašnjava 85% varijacija u cijeni pomoću mase (karata). Model je visokopouzdan."
+
+Estimate: "Povećanjem mase za 1 karat, cijena dijamanta u prosjeku raste za X dolara."
+
+```{r}
+par(mfrow=c(2,2))
+plot(model)
+```
+Residuals vs Fitted: "Linija je ravna, što potvrđuje da je odnos linearan."
+
+Normal Q-Q: "Točke prate dijagonalu, što znači da su greške modela normalno distribuirane."
+```{r}
+# Koliko košta dijamant od 1.3 karata?
+novo <- data.frame(carat = 1.3)
+predict(model, newdata = novo)
+```
+
+p < 0.05 -> "Postoji značajan utjecaj / razlika / povezanost."
+
+p > 0.05 -> "Nema dokaza za razliku, sve je vjerojatno slučajnost."
+
